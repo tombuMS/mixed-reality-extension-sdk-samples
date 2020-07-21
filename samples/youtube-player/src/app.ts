@@ -4,6 +4,7 @@
  */
 
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
+import { TextureWrapMode } from '@microsoft/mixed-reality-extension-sdk';
 
 // export declare type SetVideoStateOptions = {
 //     /**
@@ -45,6 +46,12 @@ import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 //     visible?: boolean;
 // };
 
+enum PlaybackState {
+	Stopped = 'stopped',
+	Playing = 'playing',
+	Paused = 'paused'
+}
+
 /**
  * The main class of this app. All the logic goes here.
  */
@@ -53,14 +60,28 @@ export default class YouTubePlayer {
 	private videoStream: MRE.VideoStream = null;
 	private videoPlayer: MRE.Actor = null;
 	private videoPlayerInstance: MRE.MediaInstance = null;
-	private text: MRE.Actor = null;
-	private cube: MRE.Actor = null;
+
+	private buttonMesh: MRE.Mesh = null;
+	private playButton: MRE.Actor = null;
+	private playTexture: MRE.Texture = null;
+	private pauseButton: MRE.Actor = null;
+	private pauseTexture: MRE.Texture = null;
+	private skipNextButton: MRE.Actor = null;
+	private skipNextTexture: MRE.Texture = null;
+	private skipPreviousButton: MRE.Actor = null;
+	private skipPreviousTexture: MRE.Texture = null;
+	private stopButton: MRE.Actor = null;
+
+	private buttonPanel: MRE.Actor = null;
+
+	private playbackState = PlaybackState.Stopped;
+
 	private assets: MRE.AssetContainer;
 
 	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
 		this.context.onStarted(() => this.started());
 		//this.videoUrl = "https://www.youtube.com/watch?v=SIH2eLsb44k";
-		this.videoUrl = this.params.url as string;
+		this.videoUrl = this.params.videoUrl as string;
 		console.log(`Starting video player app with video url: ${this.videoUrl}`);
 	}
 
@@ -76,39 +97,247 @@ export default class YouTubePlayer {
 
 		// Create the media instance
 		this.videoPlayer = MRE.Actor.CreateEmpty(this.context, {});
-		this.videoPlayerInstance = new MRE.MediaInstance(this.videoPlayer, this.videoStream.id);
+		this.videoPlayerInstance = new MRE.MediaInstance(this.videoPlayer, this.videoStream.id);		
 
-		console.log('Auto starting the video player.');
-		// Auto play the video for now.
-		this.videoPlayerInstance.start({
-			volume: .5,
-			rolloffStartDistance: 1.0,
-			looping: false,
-			visible: true
-		});
+		this.createButtonPanel();
 	}
 
-	/**
-	 * Generate keyframe data for a simple spin animation.
-	 * @param duration The length of time in seconds it takes to complete a full revolution.
-	 * @param axis The axis of rotation in local space.
-	 */
-	private generateSpinKeyframes(duration: number, axis: MRE.Vector3): Array<MRE.Keyframe<MRE.Quaternion>> {
-		return [{
-			time: 0 * duration,
-			value: MRE.Quaternion.RotationAxis(axis, 0)
-		}, {
-			time: 0.25 * duration,
-			value: MRE.Quaternion.RotationAxis(axis, Math.PI / 2)
-		}, {
-			time: 0.5 * duration,
-			value: MRE.Quaternion.RotationAxis(axis, Math.PI)
-		}, {
-			time: 0.75 * duration,
-			value: MRE.Quaternion.RotationAxis(axis, 3 * Math.PI / 2)
-		}, {
-			time: 1 * duration,
-			value: MRE.Quaternion.RotationAxis(axis, 2 * Math.PI)
-		}];
+	private createButtonPanel() {
+		this.buttonMesh = this.assets.createPlaneMesh('button-plane', 0.1, 0.05);
+		// this.buttonMesh = this.assets.createBoxMesh('button-mesh', 0.1, 0.1, 0.005);
+
+		this.buttonPanel = MRE.Actor.Create(this.context, { 
+			actor: { 
+				name: 'Button Panel',
+				parentId: this.videoPlayer.id,
+				transform: {
+					local: {
+						position: { x: 0, y: -0.31, z: -0.00002 }
+					}
+				}
+			} 
+		});
+		const grid = new MRE.PlanarGridLayout(this.buttonPanel, MRE.BoxAlignment.MiddleCenter);
+		const spacing = 0.11;
+
+		
+		grid.addCell({
+			row: 0,
+			column: 0,
+			width: spacing,
+			height: spacing,
+			contents: this.createPlayButton()
+		});
+
+		grid.addCell({
+			row: 0,
+			column: 1,
+			width: spacing,
+			height: spacing,
+			contents: this.createPauseButton()
+		});
+
+		grid.addCell({
+			row: 0,
+			column: 2,
+			width: spacing,
+			height: spacing,
+			contents: this.createStopButton()
+		});
+
+		grid.applyLayout();
+
+		// Load a glTF model
+		// this.pauseButton = MRE.Actor.CreateFromGltf(this.assets, {
+		// 	// at the given URL
+		// 	uri: `${this.baseUrl}/button-with-material.glb`,
+		// 	// and spawn box colliders around the meshes.
+		// 	colliderType: 'box',
+		// 	// Also apply the following generic actor properties.
+		// 	actor: {
+		// 		name: 'Pause Button',
+		// 		// Parent the glTF model to the text actor.
+		// 		parentId: this.videoPlayer.id,
+		// 		transform: {
+		// 			local: {
+		// 				position: { x: 0, y: 0, z: 0 }
+		// 			}
+		// 		}
+		// 	}
+		// });
+
+		//this.playTexture = this.assets.createTexture('playButtonTex', {
+		//	uri: `${this.baseUrl}/media-play.png`,
+		//	wrapU: TextureWrapMode.Clamp,
+		//	wrapV: TextureWrapMode.Clamp
+		//});
+	}
+
+	private createPauseButton(): MRE.Actor {
+		const pauseText = MRE.Actor.Create(this.context, {
+			actor: {
+				name: 'Pause Text',
+				parentId: this.buttonPanel.id,
+				text: {
+					contents: "Pause",
+					anchor: MRE.TextAnchorLocation.MiddleCenter,
+					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
+					height: 0.02
+				},
+			}
+		});
+
+		this.pauseButton = MRE.Actor.Create(this.context, {
+			actor: { 
+				name: 'Pause Button',
+				parentId: pauseText.id,
+				appearance: {
+					meshId: this.buttonMesh.id,
+					materialId: this.assets.createMaterial('pause-button-mat', {
+						//mainTextureId: this.assets.createTexture('pause-button-tex', {
+						//	uri: `${this.baseUrl}/media-pause.png`
+						//}).id,
+						color: MRE.Color3.Black()
+					}).id
+				},
+				collider: { geometry: { shape: MRE.ColliderType.Auto } },
+				transform: {
+					local: {
+						position: { x: 0, y: -0, z: 0.00001 },
+						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
+					}
+				}
+			}
+		});
+
+		this.pauseButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
+			switch (this.playbackState) {
+				case PlaybackState.Stopped:
+					return;
+				case PlaybackState.Playing:
+					console.log('Pausing the video player.');
+					this.videoPlayerInstance.pause();
+					this.playbackState = PlaybackState.Paused;
+					break;
+				case PlaybackState.Paused:
+					console.log('Resuming paused video player');
+					this.videoPlayerInstance.resume();
+					this.playbackState = PlaybackState.Playing;
+					break;
+			}
+		})
+
+		return pauseText;
+	}
+
+	private createPlayButton(): MRE.Actor {
+		const playText = MRE.Actor.Create(this.context, {
+			actor: {
+				name: 'Play Text',
+				parentId: this.buttonPanel.id,
+				text: {
+					contents: "Play",
+					anchor: MRE.TextAnchorLocation.MiddleCenter,
+					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
+					height: 0.02
+				},
+			}
+		});
+
+		this.playButton = MRE.Actor.Create(this.context, {
+			actor: { 
+				name: 'Play Button',
+				parentId: playText.id,
+				appearance: {
+					meshId: this.buttonMesh.id,
+					materialId: this.assets.createMaterial('play-button-mat', {
+						// mainTextureId: this.assets.createTexture('play-button-tex', {
+						// 	uri: `${this.baseUrl}/media-play.png`
+						// }).id,
+						color: MRE.Color3.Black()
+					}).id
+				},
+				collider: { geometry: { shape: MRE.ColliderType.Auto } },
+				transform: {
+					local: {
+						position: { x: 0, y: 0, z: 0.00001 },
+						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
+					}
+				}
+			}
+		});
+
+		this.playButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
+			switch (this.playbackState) {
+				case PlaybackState.Stopped:
+					console.log('Starting the video player.');
+					this.videoPlayerInstance.start({
+						volume: .5,
+						rolloffStartDistance: 1.0,
+						looping: false,
+						visible: true
+					});
+					this.playbackState = PlaybackState.Playing;
+					break;
+				case PlaybackState.Playing:
+					return;
+				case PlaybackState.Paused:
+					console.log('Resuming paused video player');
+					this.videoPlayerInstance.resume();
+					this.playbackState = PlaybackState.Playing;
+					break;
+			}
+		})
+
+		return playText;
+	}
+
+	private createStopButton(): MRE.Actor {
+		const stopText = MRE.Actor.Create(this.context, {
+			actor: {
+				name: 'Stop Text',
+				parentId: this.buttonPanel.id,
+				text: {
+					contents: "Stop",
+					anchor: MRE.TextAnchorLocation.MiddleCenter,
+					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
+					height: 0.02
+				},
+			}
+		});
+
+		this.stopButton = MRE.Actor.Create(this.context, {
+			actor: { 
+				name: 'Stop Button',
+				parentId: stopText.id,
+				appearance: {
+					meshId: this.buttonMesh.id,
+					materialId: this.assets.createMaterial('stop-button-mat', {
+						// mainTextureId: this.assets.createTexture('play-button-tex', {
+						// 	uri: `${this.baseUrl}/media-play.png`
+						// }).id,
+						color: MRE.Color3.Black()
+					}).id
+				},
+				collider: { geometry: { shape: MRE.ColliderType.Auto } },
+				transform: {
+					local: {
+						position: { x: 0, y: 0, z: 0.00001 },
+						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
+					}
+				}
+			}
+		});
+
+		this.stopButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
+			if (this.playbackState === PlaybackState.Stopped) {
+				return;
+			}
+
+			this.videoPlayerInstance.stop();
+			this.playbackState = PlaybackState.Stopped;
+		})
+
+		return stopText;
 	}
 }

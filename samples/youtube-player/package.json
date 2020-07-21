@@ -26,7 +26,7 @@
     "build-watch": "tsc --build --watch --preserveWatchOutput",
     "lint": "eslint --ext .ts src",
     "start": "node .",
-    "debug": "node --inspect-brk=5858 .",
+    "debug": "node --inspect=9229 .",
     "debug-watch": "npm run build-only && concurrently \"npm run build-watch\" \"nodemon --nolazy --inspect=9229 .\""
   },
   "devDependencies": {
