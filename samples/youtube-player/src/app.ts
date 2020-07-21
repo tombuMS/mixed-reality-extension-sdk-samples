@@ -56,19 +56,15 @@ enum PlaybackState {
  * The main class of this app. All the logic goes here.
  */
 export default class YouTubePlayer {
-	private videoUrl: string;
-	private videoStream: MRE.VideoStream = null;
+	private assets: MRE.AssetContainer;
+	private buttonMesh: MRE.Mesh = null;
+	private buttonPanel: MRE.Actor = null;
+	private playbackState = PlaybackState.Stopped;
 	private videoPlayer: MRE.Actor = null;
 	private videoPlayerInstance: MRE.MediaInstance = null;
-
-	private buttonMesh: MRE.Mesh = null;
-
-	private buttonPanel: MRE.Actor = null;
-
-	private playbackState = PlaybackState.Stopped;
-
-	private assets: MRE.AssetContainer;
-
+	private videoStream: MRE.VideoStream = null;
+	private videoUrl: string;
+	
 	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
 		this.context.onStarted(() => this.started());
 		//this.videoUrl = "https://www.youtube.com/watch?v=SIH2eLsb44k";
@@ -81,10 +77,7 @@ export default class YouTubePlayer {
 	 */
 	private started() {
 		// Load assets
-		this.assets = new MRE.AssetContainer(this.context);
-		this.videoStream = this.assets.createVideoStream('video', {
-			uri: this.videoUrl
-		});
+		this.loadAssets();
 
 		// Create the media instance
 		this.videoPlayer = MRE.Actor.CreateEmpty(this.context, {});
@@ -93,10 +86,16 @@ export default class YouTubePlayer {
 		this.createButtonPanel();
 	}
 
-	private createButtonPanel() {
+	private loadAssets() {
+		this.assets = new MRE.AssetContainer(this.context);
+		this.videoStream = this.assets.createVideoStream('video', {
+			uri: this.videoUrl
+		});
 		this.buttonMesh = this.assets.createPlaneMesh('button-plane', 0.1, 0.05);
 		// this.buttonMesh = this.assets.createBoxMesh('button-mesh', 0.1, 0.1, 0.005);
+	}
 
+	private createButtonPanel() {
 		this.buttonPanel = MRE.Actor.Create(this.context, { 
 			actor: { 
 				name: 'Button Panel',
@@ -108,16 +107,27 @@ export default class YouTubePlayer {
 				}
 			} 
 		});
+
 		const grid = new MRE.PlanarGridLayout(this.buttonPanel, MRE.BoxAlignment.MiddleCenter);
 		const spacing = 0.11;
 
-		
 		grid.addCell({
 			row: 0,
 			column: 0,
 			width: spacing,
 			height: spacing,
-			contents: this.createPlayButton()
+			contents: this.createButton('Play', _ => {
+				switch (this.playbackState) {
+					case PlaybackState.Stopped:
+						this.startVideo();
+						break;
+					case PlaybackState.Playing:
+						return;
+					case PlaybackState.Paused:
+						this.resumeVideo()
+						break;
+				}
+			})
 		});
 
 		grid.addCell({
@@ -125,7 +135,18 @@ export default class YouTubePlayer {
 			column: 1,
 			width: spacing,
 			height: spacing,
-			contents: this.createPauseButton()
+			contents: this.createButton('Pause', _ => {
+				switch (this.playbackState) {
+					case PlaybackState.Stopped:
+						return;
+					case PlaybackState.Playing:
+						this.pauseVideo();
+						break;
+					case PlaybackState.Paused:
+						this.resumeVideo();
+						break;
+				}
+			})
 		});
 
 		grid.addCell({
@@ -133,7 +154,13 @@ export default class YouTubePlayer {
 			column: 2,
 			width: spacing,
 			height: spacing,
-			contents: this.createStopButton()
+			contents: this.createButton('Stop', _ => {
+				if (this.playbackState === PlaybackState.Stopped) {
+					return;
+				}
+	
+				this.stopVideo();
+			})
 		});
 
 		grid.applyLayout();
@@ -164,13 +191,13 @@ export default class YouTubePlayer {
 		//});
 	}
 
-	private createPauseButton(): MRE.Actor {
-		const pauseText = MRE.Actor.Create(this.context, {
+	private createButton(buttonLabel: string, clickHandler: (user: MRE.User) => void): MRE.Actor {
+		const buttonContainer = MRE.Actor.Create(this.context, {
 			actor: {
-				name: 'Pause Text',
+				name: `${buttonLabel} Text`,
 				parentId: this.buttonPanel.id,
 				text: {
-					contents: "Pause",
+					contents: buttonLabel,
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
 					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
 					height: 0.02
@@ -178,13 +205,13 @@ export default class YouTubePlayer {
 			}
 		});
 
-		const pauseButton = MRE.Actor.Create(this.context, {
+		const button = MRE.Actor.Create(this.context, {
 			actor: { 
-				name: 'Pause Button',
-				parentId: pauseText.id,
+				name: `${buttonLabel} Button`,
+				parentId: buttonContainer.id,
 				appearance: {
 					meshId: this.buttonMesh.id,
-					materialId: this.assets.createMaterial('pause-button-mat', {
+					materialId: this.assets.createMaterial(`${buttonLabel.toLowerCase()}-button-mat`, {
 						//mainTextureId: this.assets.createTexture('pause-button-tex', {
 						//	uri: `${this.baseUrl}/media-pause.png`
 						//}).id,
@@ -201,121 +228,9 @@ export default class YouTubePlayer {
 			}
 		});
 
-		pauseButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
-			switch (this.playbackState) {
-				case PlaybackState.Stopped:
-					return;
-				case PlaybackState.Playing:
-					this.pauseVideo();
-					break;
-				case PlaybackState.Paused:
-					this.resumeVideo();
-					break;
-			}
-		})
+		button.setBehavior(MRE.ButtonBehavior).onClick(clickHandler);
 
-		return pauseText;
-	}
-
-	private createPlayButton(): MRE.Actor {
-		const playText = MRE.Actor.Create(this.context, {
-			actor: {
-				name: 'Play Text',
-				parentId: this.buttonPanel.id,
-				text: {
-					contents: "Play",
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
-					height: 0.02
-				},
-			}
-		});
-
-		const playButton = MRE.Actor.Create(this.context, {
-			actor: { 
-				name: 'Play Button',
-				parentId: playText.id,
-				appearance: {
-					meshId: this.buttonMesh.id,
-					materialId: this.assets.createMaterial('play-button-mat', {
-						// mainTextureId: this.assets.createTexture('play-button-tex', {
-						// 	uri: `${this.baseUrl}/media-play.png`
-						// }).id,
-						color: MRE.Color3.Black()
-					}).id
-				},
-				collider: { geometry: { shape: MRE.ColliderType.Auto } },
-				transform: {
-					local: {
-						position: { x: 0, y: 0, z: 0.00001 },
-						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
-					}
-				}
-			}
-		});
-
-		playButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
-			switch (this.playbackState) {
-				case PlaybackState.Stopped:
-					this.startVideo();
-					break;
-				case PlaybackState.Playing:
-					return;
-				case PlaybackState.Paused:
-					this.resumeVideo()
-					break;
-			}
-		})
-
-		return playText;
-	}
-
-	private createStopButton(): MRE.Actor {
-		const stopText = MRE.Actor.Create(this.context, {
-			actor: {
-				name: 'Stop Text',
-				parentId: this.buttonPanel.id,
-				text: {
-					contents: "Stop",
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
-					height: 0.02
-				},
-			}
-		});
-
-		const stopButton = MRE.Actor.Create(this.context, {
-			actor: { 
-				name: 'Stop Button',
-				parentId: stopText.id,
-				appearance: {
-					meshId: this.buttonMesh.id,
-					materialId: this.assets.createMaterial('stop-button-mat', {
-						// mainTextureId: this.assets.createTexture('play-button-tex', {
-						// 	uri: `${this.baseUrl}/media-play.png`
-						// }).id,
-						color: MRE.Color3.Black()
-					}).id
-				},
-				collider: { geometry: { shape: MRE.ColliderType.Auto } },
-				transform: {
-					local: {
-						position: { x: 0, y: 0, z: 0.00001 },
-						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
-					}
-				}
-			}
-		});
-
-		stopButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
-			if (this.playbackState === PlaybackState.Stopped) {
-				return;
-			}
-
-			this.stopVideo();
-		})
-
-		return stopText;
+		return buttonContainer;
 	}
 
 	private startVideo() {
