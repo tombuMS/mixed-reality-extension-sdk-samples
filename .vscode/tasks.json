@@ -28,6 +28,13 @@
       "problemMatcher": []
     },
     {
+		"label": "Build YouTube Player",
+		"type": "typescript",
+		"tsconfig": "samples/youtube-player/tsconfig.json",
+		"problemMatcher": "$tsc",
+		"group": "build"
+	},
+    {
       "type": "npm",
       "script": "build-all",
       "path": "scripts/",

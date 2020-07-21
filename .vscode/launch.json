@@ -70,6 +70,22 @@
     },
     {
       "type": "node",
+      "request": "launch",
+      "name": "Launch youtube-player project",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run-script",
+        "debug"
+      ],
+      "port": 9229,
+      "cwd": "${workspaceFolder}/samples/youtube-player",
+      "internalConsoleOptions": "openOnSessionStart",
+      "autoAttachChildProcesses": true,
+      "console": "internalConsole",
+      "outputCapture": "std"
+    },
+    {
+      "type": "node",
       "request": "attach",
       "name": "Attach to running project",
       "port": 9229,
