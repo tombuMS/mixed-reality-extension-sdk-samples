@@ -62,15 +62,6 @@ export default class YouTubePlayer {
 	private videoPlayerInstance: MRE.MediaInstance = null;
 
 	private buttonMesh: MRE.Mesh = null;
-	private playButton: MRE.Actor = null;
-	private playTexture: MRE.Texture = null;
-	private pauseButton: MRE.Actor = null;
-	private pauseTexture: MRE.Texture = null;
-	private skipNextButton: MRE.Actor = null;
-	private skipNextTexture: MRE.Texture = null;
-	private skipPreviousButton: MRE.Actor = null;
-	private skipPreviousTexture: MRE.Texture = null;
-	private stopButton: MRE.Actor = null;
 
 	private buttonPanel: MRE.Actor = null;
 
@@ -187,7 +178,7 @@ export default class YouTubePlayer {
 			}
 		});
 
-		this.pauseButton = MRE.Actor.Create(this.context, {
+		const pauseButton = MRE.Actor.Create(this.context, {
 			actor: { 
 				name: 'Pause Button',
 				parentId: pauseText.id,
@@ -210,19 +201,15 @@ export default class YouTubePlayer {
 			}
 		});
 
-		this.pauseButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
+		pauseButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
 			switch (this.playbackState) {
 				case PlaybackState.Stopped:
 					return;
 				case PlaybackState.Playing:
-					console.log('Pausing the video player.');
-					this.videoPlayerInstance.pause();
-					this.playbackState = PlaybackState.Paused;
+					this.pauseVideo();
 					break;
 				case PlaybackState.Paused:
-					console.log('Resuming paused video player');
-					this.videoPlayerInstance.resume();
-					this.playbackState = PlaybackState.Playing;
+					this.resumeVideo();
 					break;
 			}
 		})
@@ -244,7 +231,7 @@ export default class YouTubePlayer {
 			}
 		});
 
-		this.playButton = MRE.Actor.Create(this.context, {
+		const playButton = MRE.Actor.Create(this.context, {
 			actor: { 
 				name: 'Play Button',
 				parentId: playText.id,
@@ -267,24 +254,15 @@ export default class YouTubePlayer {
 			}
 		});
 
-		this.playButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
+		playButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
 			switch (this.playbackState) {
 				case PlaybackState.Stopped:
-					console.log('Starting the video player.');
-					this.videoPlayerInstance.start({
-						volume: .5,
-						rolloffStartDistance: 1.0,
-						looping: false,
-						visible: true
-					});
-					this.playbackState = PlaybackState.Playing;
+					this.startVideo();
 					break;
 				case PlaybackState.Playing:
 					return;
 				case PlaybackState.Paused:
-					console.log('Resuming paused video player');
-					this.videoPlayerInstance.resume();
-					this.playbackState = PlaybackState.Playing;
+					this.resumeVideo()
 					break;
 			}
 		})
@@ -306,7 +284,7 @@ export default class YouTubePlayer {
 			}
 		});
 
-		this.stopButton = MRE.Actor.Create(this.context, {
+		const stopButton = MRE.Actor.Create(this.context, {
 			actor: { 
 				name: 'Stop Button',
 				parentId: stopText.id,
@@ -329,15 +307,44 @@ export default class YouTubePlayer {
 			}
 		});
 
-		this.stopButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
+		stopButton.setBehavior(MRE.ButtonBehavior).onClick(_ => {
 			if (this.playbackState === PlaybackState.Stopped) {
 				return;
 			}
 
-			this.videoPlayerInstance.stop();
-			this.playbackState = PlaybackState.Stopped;
+			this.stopVideo();
 		})
 
 		return stopText;
+	}
+
+	private startVideo() {
+		console.log('Starting the video player.');
+		this.videoPlayerInstance.start({
+			volume: .5,
+			rolloffStartDistance: 1.0,
+			looping: false,
+			visible: true
+		});
+
+		this.playbackState = PlaybackState.Playing;
+	}
+
+	private pauseVideo() {
+		console.log('Pausing video player');
+		this.videoPlayerInstance.pause();
+		this.playbackState = PlaybackState.Paused;
+	}
+
+	private resumeVideo() {
+		console.log('Resuming paused video player');
+		this.videoPlayerInstance.resume();
+		this.playbackState = PlaybackState.Playing;
+	}
+
+	private stopVideo() {
+		console.log("Stopping video player");
+		this.videoPlayerInstance.stop();
+		this.playbackState = PlaybackState.Stopped;
 	}
 }
