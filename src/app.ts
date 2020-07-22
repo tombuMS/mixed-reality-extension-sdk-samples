@@ -6,6 +6,8 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import { VideoMedia, StreamingMedia } from './media';
 import { MediaPlayer, PlaybackState } from './mediaPlayer';
+import UserManager from './userManager';
+import MediaSetupOverlay from './mediaSetupOverlay';
 
 // export declare type SetVideoStateOptions = {
 //     /**
@@ -57,35 +59,53 @@ const videos = [
 /**
  * The main class of this app. All the logic goes here.
  */
-export default class YouTubePlayer {
-	private assets: MRE.AssetContainer;
-	private buttonMesh: MRE.Mesh = null;
-	private buttonPanel: MRE.Actor = null;
+export default class YouTubePlayerApp {
+	private _assets: MRE.AssetContainer;
+	private _buttonMesh: MRE.Mesh = null;
+	private _buttonMaterial: MRE.Material = null;
 
-	private mediaPlayerRoot: MRE.Actor = null;
-	private mediaPlayer: MediaPlayer = null;
+	private _buttonPanel: MRE.Actor = null;
 
-	private loopMediaSet = false;
+	private _mediaPlayerRoot: MRE.Actor = null;
+	private _mediaPlayer: MediaPlayer = null;
 
-	private media: StreamingMedia[] = [];
-	private currentMediaIdx: number = null;
+	private _loopMediaSet = false;
+	private _media: StreamingMedia[] = [];
+	private _currentMediaIdx: number = null;
 
-	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
+	private _userManager: UserManager = null;
+	private _mediaSetupOverlay: MediaSetupOverlay = null;
+
+	public get assets() { return this._assets; }
+	public get context() { return this._context; }
+	public get baseUrl() { return this._baseUrl; }
+	public get userManager() { return this._userManager; }
+
+	constructor(private _context: MRE.Context, private _params: MRE.ParameterSet, private _baseUrl: string) {
+		this._userManager = new UserManager(this);
+
 		this.context.onStarted(() => this.started());
+		this.context.onUserJoined(user => this._userManager.onUserJoined(user));
 		
-		if (this.params.videoUrl) {
-			this.media.push(new VideoMedia({ url: this.params.videoUrl as string }));
+		if (this._params.videoUrl) {
+			this._media.push(new VideoMedia({ url: this._params.videoUrl as string }));
 		} else {
 			for(var video in videos) {
-				this.media.push(new VideoMedia({ url: videos[video] }));
+				this._media.push(new VideoMedia({ url: videos[video] }));
 			}
 		}
 
-		if (params.loopMediaSet && (params.loopMediaSet as string).toLowerCase() === 'true') {
-			this.loopMediaSet = true;
+		if (_params.loopMediaSet && (_params.loopMediaSet as string).toLowerCase() === 'true') {
+			this._loopMediaSet = true;
 		}
 		
-		this.currentMediaIdx = 0;
+		this._currentMediaIdx = 0;
+
+		this._mediaSetupOverlay = new MediaSetupOverlay(this);
+	}
+
+	public startMediaPlayer() {
+		this.showMediaPlayer();
 	}
 
 	/**
@@ -95,24 +115,44 @@ export default class YouTubePlayer {
 		// Load assets
 		this.loadAssets();
 
+		this._mediaSetupOverlay.showOwnerOverlay();
+		// this.startMediaPlayer();
+	}
+
+	private loadAssets() {
+		this._assets = new MRE.AssetContainer(this.context);
+		this._buttonMesh = this.assets.createPlaneMesh('button-plane', 0.1, 0.05);
+		this._buttonMaterial = this.assets.createMaterial('button-mat', {
+			mainTextureId: this.assets.createTexture('button-tex', {
+				uri: `${this.baseUrl}/greyBtn.png`
+			}).id,
+			alphaMode: MRE.AlphaMode.Mask
+		})
+	}
+
+	private showMediaPlayer() {
 		// Create the media instance
-		this.mediaPlayerRoot = MRE.Actor.CreateEmpty(this.context, {});
-		this.mediaPlayer = new MediaPlayer(this.mediaPlayerRoot, this.assets);
+		const appScalar = 5;
+		this._mediaPlayerRoot = MRE.Actor.CreateEmpty(this.context, {
+			actor: {
+				name: 'Media Player Root',
+				transform: {
+					local: {
+						scale: { x: 1 * appScalar, y: 1 * appScalar, z: 1 * appScalar }
+					}
+				}
+			}
+		});
+		this._mediaPlayer = new MediaPlayer(this._mediaPlayerRoot, this.assets);
 
 		this.createButtonPanel();
 	}
 
-	private loadAssets() {
-		this.assets = new MRE.AssetContainer(this.context);
-		this.buttonMesh = this.assets.createPlaneMesh('button-plane', 0.1, 0.05);
-		// this.buttonMesh = this.assets.createBoxMesh('button-mesh', 0.1, 0.1, 0.005);
-	}
-
 	private createButtonPanel() {
-		this.buttonPanel = MRE.Actor.Create(this.context, { 
+		this._buttonPanel = MRE.Actor.Create(this.context, { 
 			actor: { 
 				name: 'Button Panel',
-				parentId: this.mediaPlayerRoot.id,
+				parentId: this._mediaPlayerRoot.id,
 				transform: {
 					local: {
 						position: { x: 0, y: -0.31, z: -0.00002 }
@@ -121,7 +161,7 @@ export default class YouTubePlayer {
 			} 
 		});
 
-		const grid = new MRE.PlanarGridLayout(this.buttonPanel, MRE.BoxAlignment.MiddleCenter);
+		const grid = new MRE.PlanarGridLayout(this._buttonPanel, MRE.BoxAlignment.MiddleCenter);
 		const spacing = 0.11;
 
 		grid.addCell({
@@ -129,20 +169,20 @@ export default class YouTubePlayer {
 			column: 0,
 			width: spacing,
 			height: spacing,
-			contents: this.createButton('Previous', _ => {
-				if (this.loopMediaSet) {
-					this.currentMediaIdx = (--this.currentMediaIdx < 0) ? this.media.length - 1 : this.currentMediaIdx;
+			contents: this.createButton('Prev', _ => {
+				if (this._loopMediaSet) {
+					this._currentMediaIdx = (--this._currentMediaIdx < 0) ? this._media.length - 1 : this._currentMediaIdx;
 				} else {
-					if (--this.currentMediaIdx < 0) {
+					if (--this._currentMediaIdx < 0) {
 						// There is no previous video so don't to do anything.
-						this.currentMediaIdx = 0;
+						this._currentMediaIdx = 0;
 						return;
 					}
 				}
 				
-				this.mediaPlayer.stop();
-				if (this.currentMediaIdx < this.media.length && this.currentMediaIdx >= 0) {
-					this.mediaPlayer.start(this.media[this.currentMediaIdx]);
+				this._mediaPlayer.stop();
+				if (this._currentMediaIdx < this._media.length && this._currentMediaIdx >= 0) {
+					this._mediaPlayer.start(this._media[this._currentMediaIdx]);
 				}
 			})
 		});
@@ -153,27 +193,27 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Play', _ => {
-				switch (this.mediaPlayer.playbackState) {
+				switch (this._mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
 						// Early out in the case that we have no media to play.
-						if (this.media.length === 0) {
+						if (this._media.length === 0) {
 							return;
 						}
 
 						// We have skipped to before or after the last video.  Play will reset to the beginning media.
-						if (this.currentMediaIdx < 0 || this.currentMediaIdx >= this.media.length) {
-							this.currentMediaIdx = 0;
+						if (this._currentMediaIdx < 0 || this._currentMediaIdx >= this._media.length) {
+							this._currentMediaIdx = 0;
 						}
 
-						const currentMedia = this.media[this.currentMediaIdx];
+						const currentMedia = this._media[this._currentMediaIdx];
 						if (currentMedia) {
-							this.mediaPlayer.start(currentMedia);
+							this._mediaPlayer.start(currentMedia);
 						}
 						break;
 					case PlaybackState.Playing:
 						return;
 					case PlaybackState.Paused:
-						this.mediaPlayer.resume();
+						this._mediaPlayer.resume();
 						break;
 				}
 			})
@@ -185,14 +225,14 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Pause', _ => {
-				switch (this.mediaPlayer.playbackState) {
+				switch (this._mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
 						return;
 					case PlaybackState.Playing:
-						this.mediaPlayer.pause();
+						this._mediaPlayer.pause();
 						break;
 					case PlaybackState.Paused:
-						this.mediaPlayer.resume();
+						this._mediaPlayer.resume();
 						break;
 				}
 			})
@@ -204,11 +244,11 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Stop', _ => {
-				if (this.mediaPlayer.playbackState === PlaybackState.Stopped) {
+				if (this._mediaPlayer.playbackState === PlaybackState.Stopped) {
 					return;
 				}
 	
-				this.mediaPlayer.stop();
+				this._mediaPlayer.stop();
 			})
 		});
 
@@ -218,45 +258,49 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Next', _ => {
-				this.mediaPlayer.stop();
+				this._mediaPlayer.stop();
 
-				if (this.loopMediaSet) {
-					this.currentMediaIdx = ++this.currentMediaIdx % this.media.length;
+				if (this._loopMediaSet) {
+					this._currentMediaIdx = ++this._currentMediaIdx % this._media.length;
 				} else {
-					if (this.currentMediaIdx == this.media.length) {
+					if (this._currentMediaIdx == this._media.length) {
 						// We are already one past the end of the media set.  Do nothing.
 						return;
 					}
-					++this.currentMediaIdx;
+					++this._currentMediaIdx;
 				}
 				
-				if (this.currentMediaIdx < this.media.length && this.currentMediaIdx >= 0) {
-					this.mediaPlayer.start(this.media[this.currentMediaIdx]);
+				if (this._currentMediaIdx < this._media.length && this._currentMediaIdx >= 0) {
+					this._mediaPlayer.start(this._media[this._currentMediaIdx]);
 				}
 			})
 		});
 
 		grid.applyLayout();
+		this._buttonPanel.created().then(() => {
+			this._buttonPanel.appearance.enabled = new MRE.GroupMask(this._context, [UserManager.OWNER_MASK]);
+		})
+
 
 		// Load a glTF model
-		const pauseButton = MRE.Actor.CreateFromGltf(this.assets, {
-			// at the given URL
-			uri: `${this.baseUrl}/button-with-material.glb`,
-			// and spawn box colliders around the meshes.
-			colliderType: 'box',
-			// Also apply the following generic actor properties.
-			actor: {
-				name: 'Pause Button',
-				// Parent the glTF model to the text actor.
-				parentId: this.mediaPlayerRoot.id,
-				transform: {
-					local: {
-						position: { x: 0, y: 0, z: 0 },
-						scale: { x: 0, y: 0, z: 0 }
-					}
-				} 
-			}
-		});
+		//const pauseButton = MRE.Actor.CreateFromGltf(this.assets, {
+		//	// at the given URL
+		//	uri: `${this.baseUrl}/button-with-material.glb`,
+		//	// and spawn box colliders around the meshes.
+		//	colliderType: 'box',
+		//	// Also apply the following generic actor properties.
+		//	actor: {
+		//		name: 'Pause Button',
+		//		// Parent the glTF model to the text actor.
+		//		parentId: this._mediaPlayerRoot.id,
+		//		transform: {
+		//			local: {
+		//				position: { x: 0, y: 0, z: 0 },
+		//				scale: { x: 0, y: 0, z: 0 }
+		//			}
+		//		} 
+		//	}
+		//});
 
 		//this.playTexture = this.assets.createTexture('playButtonTex', {
 		//	uri: `${this.baseUrl}/media-play.png`,
@@ -269,11 +313,11 @@ export default class YouTubePlayer {
 		const buttonContainer = MRE.Actor.Create(this.context, {
 			actor: {
 				name: `${buttonLabel} Text`,
-				parentId: this.buttonPanel.id,
+				parentId: this._buttonPanel.id,
 				text: {
 					contents: buttonLabel,
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					color: { r: 30 / 255, g: 206 / 255, b: 213 / 255 },
+					color: MRE.Color3.White(),
 					height: 0.02
 				},
 			}
@@ -284,13 +328,8 @@ export default class YouTubePlayer {
 				name: `${buttonLabel} Button`,
 				parentId: buttonContainer.id,
 				appearance: {
-					meshId: this.buttonMesh.id,
-					materialId: this.assets.createMaterial(`${buttonLabel.toLowerCase()}-button-mat`, {
-						//mainTextureId: this.assets.createTexture('pause-button-tex', {
-						//	uri: `${this.baseUrl}/media-pause.png`
-						//}).id,
-						color: MRE.Color3.Black()
-					}).id
+					meshId: this._buttonMesh.id,
+					materialId: this._buttonMaterial.id
 				},
 				collider: { geometry: { shape: MRE.ColliderType.Auto } },
 				transform: {
