@@ -47,6 +47,13 @@ import { MediaPlayer, PlaybackState } from './mediaPlayer';
 //     visible?: boolean;
 // };
 
+const videos = [
+	"https://www.youtube.com/watch?v=SIH2eLsb44k",
+	"https://www.youtube.com/watch?time_continue=3&v=esgZ8vBkV0U",
+	"https://www.youtube.com/watch?v=ojHe2L-CHAE",
+	"https://www.youtube.com/watch?v=bf6ag0_zoY0"
+]
+
 /**
  * The main class of this app. All the logic goes here.
  */
@@ -58,16 +65,26 @@ export default class YouTubePlayer {
 	private mediaPlayerRoot: MRE.Actor = null;
 	private mediaPlayer: MediaPlayer = null;
 
-	//private videoUrl: string;
+	private loopMediaSet = false;
 
 	private media: StreamingMedia[] = [];
 	private currentMediaIdx: number = null;
 
 	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
 		this.context.onStarted(() => this.started());
-		//this.videoUrl = "https://www.youtube.com/watch?v=SIH2eLsb44k";
-		//this.videoUrl = this.params.videoUrl as string;
-		this.media.push(new VideoMedia({ url: this.params.videoUrl as string }));
+		
+		if (this.params.videoUrl) {
+			this.media.push(new VideoMedia({ url: this.params.videoUrl as string }));
+		} else {
+			for(var video in videos) {
+				this.media.push(new VideoMedia({ url: videos[video] }));
+			}
+		}
+
+		if (params.loopMediaSet && (params.loopMediaSet as string).toLowerCase() === 'true') {
+			this.loopMediaSet = true;
+		}
+		
 		this.currentMediaIdx = 0;
 	}
 
@@ -112,9 +129,42 @@ export default class YouTubePlayer {
 			column: 0,
 			width: spacing,
 			height: spacing,
+			contents: this.createButton('Previous', _ => {
+				if (this.loopMediaSet) {
+					this.currentMediaIdx = (--this.currentMediaIdx < 0) ? this.media.length - 1 : this.currentMediaIdx;
+				} else {
+					if (--this.currentMediaIdx < 0) {
+						// There is no previous video so don't to do anything.
+						this.currentMediaIdx = 0;
+						return;
+					}
+				}
+				
+				this.mediaPlayer.stop();
+				if (this.currentMediaIdx < this.media.length && this.currentMediaIdx >= 0) {
+					this.mediaPlayer.start(this.media[this.currentMediaIdx]);
+				}
+			})
+		});
+
+		grid.addCell({
+			row: 0,
+			column: 1,
+			width: spacing,
+			height: spacing,
 			contents: this.createButton('Play', _ => {
 				switch (this.mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
+						// Early out in the case that we have no media to play.
+						if (this.media.length === 0) {
+							return;
+						}
+
+						// We have skipped to before or after the last video.  Play will reset to the beginning media.
+						if (this.currentMediaIdx < 0 || this.currentMediaIdx >= this.media.length) {
+							this.currentMediaIdx = 0;
+						}
+
 						const currentMedia = this.media[this.currentMediaIdx];
 						if (currentMedia) {
 							this.mediaPlayer.start(currentMedia);
@@ -131,7 +181,7 @@ export default class YouTubePlayer {
 
 		grid.addCell({
 			row: 0,
-			column: 1,
+			column: 2,
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Pause', _ => {
@@ -150,7 +200,7 @@ export default class YouTubePlayer {
 
 		grid.addCell({
 			row: 0,
-			column: 2,
+			column: 3,
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Stop', _ => {
@@ -159,6 +209,30 @@ export default class YouTubePlayer {
 				}
 	
 				this.mediaPlayer.stop();
+			})
+		});
+
+		grid.addCell({
+			row: 0,
+			column: 4,
+			width: spacing,
+			height: spacing,
+			contents: this.createButton('Next', _ => {
+				this.mediaPlayer.stop();
+
+				if (this.loopMediaSet) {
+					this.currentMediaIdx = ++this.currentMediaIdx % this.media.length;
+				} else {
+					if (this.currentMediaIdx == this.media.length) {
+						// We are already one past the end of the media set.  Do nothing.
+						return;
+					}
+					++this.currentMediaIdx;
+				}
+				
+				if (this.currentMediaIdx < this.media.length && this.currentMediaIdx >= 0) {
+					this.mediaPlayer.start(this.media[this.currentMediaIdx]);
+				}
 			})
 		});
 
