@@ -33,7 +33,7 @@ export class MediaPlayer {
     // public start(mediaType: MediaType.Video, media: VideoMediaLike): void;
     public start(media: ImageMediaLike | VideoMediaLike): void {
         // Clear out the video and image hosts.
-        this._videoPlayerInstance = null;
+        delete this._videoPlayerInstance;
 
         if (media.type === MediaType.Video) {
             this.startVideo(media as VideoMediaLike);
