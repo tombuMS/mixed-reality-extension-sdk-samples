@@ -4,7 +4,8 @@
  */
 
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import { TextureWrapMode } from '@microsoft/mixed-reality-extension-sdk';
+import { VideoMedia, StreamingMedia } from './media';
+import { MediaPlayer, PlaybackState } from './mediaPlayer';
 
 // export declare type SetVideoStateOptions = {
 //     /**
@@ -46,12 +47,6 @@ import { TextureWrapMode } from '@microsoft/mixed-reality-extension-sdk';
 //     visible?: boolean;
 // };
 
-enum PlaybackState {
-	Stopped = 'stopped',
-	Playing = 'playing',
-	Paused = 'paused'
-}
-
 /**
  * The main class of this app. All the logic goes here.
  */
@@ -59,17 +54,21 @@ export default class YouTubePlayer {
 	private assets: MRE.AssetContainer;
 	private buttonMesh: MRE.Mesh = null;
 	private buttonPanel: MRE.Actor = null;
-	private playbackState = PlaybackState.Stopped;
-	private videoPlayer: MRE.Actor = null;
-	private videoPlayerInstance: MRE.MediaInstance = null;
-	private videoStream: MRE.VideoStream = null;
-	private videoUrl: string;
-	
+
+	private mediaPlayerRoot: MRE.Actor = null;
+	private mediaPlayer: MediaPlayer = null;
+
+	//private videoUrl: string;
+
+	private media: StreamingMedia[] = [];
+	private currentMediaIdx: number = null;
+
 	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
 		this.context.onStarted(() => this.started());
 		//this.videoUrl = "https://www.youtube.com/watch?v=SIH2eLsb44k";
-		this.videoUrl = this.params.videoUrl as string;
-		console.log(`Starting video player app with video url: ${this.videoUrl}`);
+		//this.videoUrl = this.params.videoUrl as string;
+		this.media.push(new VideoMedia({ url: this.params.videoUrl as string }));
+		this.currentMediaIdx = 0;
 	}
 
 	/**
@@ -80,17 +79,14 @@ export default class YouTubePlayer {
 		this.loadAssets();
 
 		// Create the media instance
-		this.videoPlayer = MRE.Actor.CreateEmpty(this.context, {});
-		this.videoPlayerInstance = new MRE.MediaInstance(this.videoPlayer, this.videoStream.id);		
+		this.mediaPlayerRoot = MRE.Actor.CreateEmpty(this.context, {});
+		this.mediaPlayer = new MediaPlayer(this.mediaPlayerRoot, this.assets);
 
 		this.createButtonPanel();
 	}
 
 	private loadAssets() {
 		this.assets = new MRE.AssetContainer(this.context);
-		this.videoStream = this.assets.createVideoStream('video', {
-			uri: this.videoUrl
-		});
 		this.buttonMesh = this.assets.createPlaneMesh('button-plane', 0.1, 0.05);
 		// this.buttonMesh = this.assets.createBoxMesh('button-mesh', 0.1, 0.1, 0.005);
 	}
@@ -99,7 +95,7 @@ export default class YouTubePlayer {
 		this.buttonPanel = MRE.Actor.Create(this.context, { 
 			actor: { 
 				name: 'Button Panel',
-				parentId: this.videoPlayer.id,
+				parentId: this.mediaPlayerRoot.id,
 				transform: {
 					local: {
 						position: { x: 0, y: -0.31, z: -0.00002 }
@@ -117,14 +113,17 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Play', _ => {
-				switch (this.playbackState) {
+				switch (this.mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
-						this.startVideo();
+						const currentMedia = this.media[this.currentMediaIdx];
+						if (currentMedia) {
+							this.mediaPlayer.start(currentMedia);
+						}
 						break;
 					case PlaybackState.Playing:
 						return;
 					case PlaybackState.Paused:
-						this.resumeVideo()
+						this.mediaPlayer.resume();
 						break;
 				}
 			})
@@ -136,14 +135,14 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Pause', _ => {
-				switch (this.playbackState) {
+				switch (this.mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
 						return;
 					case PlaybackState.Playing:
-						this.pauseVideo();
+						this.mediaPlayer.pause();
 						break;
 					case PlaybackState.Paused:
-						this.resumeVideo();
+						this.mediaPlayer.resume();
 						break;
 				}
 			})
@@ -155,34 +154,35 @@ export default class YouTubePlayer {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Stop', _ => {
-				if (this.playbackState === PlaybackState.Stopped) {
+				if (this.mediaPlayer.playbackState === PlaybackState.Stopped) {
 					return;
 				}
 	
-				this.stopVideo();
+				this.mediaPlayer.stop();
 			})
 		});
 
 		grid.applyLayout();
 
 		// Load a glTF model
-		// this.pauseButton = MRE.Actor.CreateFromGltf(this.assets, {
-		// 	// at the given URL
-		// 	uri: `${this.baseUrl}/button-with-material.glb`,
-		// 	// and spawn box colliders around the meshes.
-		// 	colliderType: 'box',
-		// 	// Also apply the following generic actor properties.
-		// 	actor: {
-		// 		name: 'Pause Button',
-		// 		// Parent the glTF model to the text actor.
-		// 		parentId: this.videoPlayer.id,
-		// 		transform: {
-		// 			local: {
-		// 				position: { x: 0, y: 0, z: 0 }
-		// 			}
-		// 		}
-		// 	}
-		// });
+		const pauseButton = MRE.Actor.CreateFromGltf(this.assets, {
+			// at the given URL
+			uri: `${this.baseUrl}/button-with-material.glb`,
+			// and spawn box colliders around the meshes.
+			colliderType: 'box',
+			// Also apply the following generic actor properties.
+			actor: {
+				name: 'Pause Button',
+				// Parent the glTF model to the text actor.
+				parentId: this.mediaPlayerRoot.id,
+				transform: {
+					local: {
+						position: { x: 0, y: 0, z: 0 },
+						scale: { x: 0, y: 0, z: 0 }
+					}
+				} 
+			}
+		});
 
 		//this.playTexture = this.assets.createTexture('playButtonTex', {
 		//	uri: `${this.baseUrl}/media-play.png`,
@@ -233,33 +233,36 @@ export default class YouTubePlayer {
 		return buttonContainer;
 	}
 
-	private startVideo() {
-		console.log('Starting the video player.');
-		this.videoPlayerInstance.start({
-			volume: .5,
-			rolloffStartDistance: 1.0,
-			looping: false,
-			visible: true
-		});
 
-		this.playbackState = PlaybackState.Playing;
-	}
-
-	private pauseVideo() {
-		console.log('Pausing video player');
-		this.videoPlayerInstance.pause();
-		this.playbackState = PlaybackState.Paused;
-	}
-
-	private resumeVideo() {
-		console.log('Resuming paused video player');
-		this.videoPlayerInstance.resume();
-		this.playbackState = PlaybackState.Playing;
-	}
-
-	private stopVideo() {
-		console.log("Stopping video player");
-		this.videoPlayerInstance.stop();
-		this.playbackState = PlaybackState.Stopped;
-	}
+	//=============================================================================================================================
+	// Video functions
+	// private startVideo() {
+	// 	console.log('Starting the video player.');
+	// 	this.videoPlayerInstance.start({
+	// 		volume: .5,
+	// 		rolloffStartDistance: 1.0,
+	// 		looping: false,
+	// 		visible: true
+	// 	});
+// 
+	// 	this.playbackState = PlaybackState.Playing;
+	// }
+// 
+	// private pauseVideo() {
+	// 	console.log('Pausing video player');
+	// 	this.videoPlayerInstance.pause();
+	// 	this.playbackState = PlaybackState.Paused;
+	// }
+// 
+	// private resumeVideo() {
+	// 	console.log('Resuming paused video player');
+	// 	this.videoPlayerInstance.resume();
+	// 	this.playbackState = PlaybackState.Playing;
+	// }
+// 
+	// private stopVideo() {
+	// 	console.log("Stopping video player");
+	// 	this.videoPlayerInstance.stop();
+	// 	this.playbackState = PlaybackState.Stopped;
+	// }
 }
