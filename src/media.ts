@@ -46,7 +46,9 @@ export class ImageMedia extends StreamingMedia<MRE.Texture> /*implements ImageMe
 
     public preloadAssets(assetContainer: MRE.AssetContainer): Promise<void> {
         this._asset = assetContainer.createTexture('image', {
-            uri: this.url
+            uri: this.url,
+            wrapU: MRE.TextureWrapMode.Clamp,
+            wrapV: MRE.TextureWrapMode.Clamp
         });
 
         // Return a wrapper promise that will create the image host actor and cache it?
