@@ -24,13 +24,35 @@ export class MediaPlayer {
     private _skipTimeout: NodeJS.Timeout = null;
     
     // Will be used to host the image
-    private imageHost: MRE.Actor;
+    private _imageHost: MRE.Actor;
+    private _imageHostMat: MRE.Material;
 
     public get currentMediaType() { return this._currentMedia?.type; }
     public get playbackState() { return this._playbackState; }
 
     constructor(private rootActor: MRE.Actor, private assets: MRE.AssetContainer, private _mediaManager: MediaManager) {
+        this._imageHostMat = assets.createMaterial("media-player-bg-mat", {
+            //color: MRE.Color3.Gray()
+        });
 
+        // this._imageHost = MRE.Actor.CreatePrimitive(assets, {
+        //     definition: {
+        //         shape: MRE.PrimitiveShape.Plane,
+        //         dimensions: { x: 1, y: 0, z: 1 }
+        //     },
+        //     actor: {
+        //         name: "media-player-bg",
+        //         parentId: rootActor.id,
+        //         appearance: {
+        //             materialId: this._imageHostMat.id
+        //         },
+        //         transform: {
+        //             local: {
+        //                 rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
+        //             }
+        //         }
+        //     }
+        // });
     }
 
     public start(): void {
@@ -42,11 +64,10 @@ export class MediaPlayer {
         // Clear out any skip timer that might exist.
         this.clearSkipTimeout();
 
-        // Clear out the video and image hosts.
-        delete this._videoPlayerInstance;
-
         if (this._currentMedia.type === MediaType.Video) {
             this.startVideo(this._currentMedia as VideoMedia);
+        } else if (this._currentMedia.type === MediaType.Image) {
+            this.startImage(this._currentMedia as ImageMedia);
         }
 
         if (this._currentMedia.skipAfter > 0) {
@@ -59,6 +80,12 @@ export class MediaPlayer {
     public stop() {
         if (this._videoPlayerInstance) {
             this._videoPlayerInstance.stop();
+            delete this._videoPlayerInstance;
+        }
+
+        if (this._imageHost) {
+            this._imageHost.destroy();
+            delete this._imageHost;
         }
 
         this.clearSkipTimeout();
@@ -110,7 +137,7 @@ export class MediaPlayer {
         //        uri: video.url
         //    });
 
-        this._videoPlayerInstance = new MRE.MediaInstance(this.rootActor, this._currentMedia.asset.id);
+        this._videoPlayerInstance = new MRE.MediaInstance(this.rootActor, video.asset.id);
         this._videoPlayerInstance.start({
             volume: video.volume,
             time: video.startTime,
@@ -119,6 +146,41 @@ export class MediaPlayer {
     }
 
     private startImage(image: ImageMedia) {
-        
+        const texture = image.asset;
+        const imgResolution = texture.resolution;
+
+        // Calculate the bounds we need to clamp in one direction or the other to 1 x 1 max size.
+        const fixedAspectRation = 16 / 9;
+        let width = 1; 
+        let height = 1; // Needs to be based on a height of a 16:9 video
+        if (imgResolution.x > imgResolution.y) {
+            height = height * (imgResolution.y / imgResolution.x);
+        } else if (imgResolution.x < imgResolution.y) {
+            width = width * (imgResolution.x / imgResolution.y);
+        }
+
+        // Update the image host material with the image texture.
+        this._imageHostMat.color = null;
+        this._imageHostMat.mainTextureId = texture.id;
+
+        // Create new image host with the correct bounds for the texture.
+        this._imageHost = MRE.Actor.CreatePrimitive(this.assets, {
+            definition: {
+                shape: MRE.PrimitiveShape.Plane,
+                dimensions: { x: width, y: 0, z: height }
+            },
+            actor: {
+                name: "img-host",
+                parentId: this.rootActor.id,
+                appearance: {
+                    materialId: this._imageHostMat.id
+                },
+                transform: {
+                    local: {
+                        rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
+                    }
+                }
+            }
+        });
     }
 }
