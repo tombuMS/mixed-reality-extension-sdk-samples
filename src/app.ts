@@ -8,6 +8,7 @@ import { VideoMedia, StreamingMedia } from './media';
 import { MediaPlayer, PlaybackState } from './mediaPlayer';
 import UserManager from './userManager';
 import MediaSetupOverlay from './mediaSetupOverlay';
+import MediaManager from './mediaManager';
 
 // export declare type SetVideoStateOptions = {
 //     /**
@@ -49,13 +50,6 @@ import MediaSetupOverlay from './mediaSetupOverlay';
 //     visible?: boolean;
 // };
 
-const videos = [
-	"https://www.youtube.com/watch?v=SIH2eLsb44k",
-	"https://www.youtube.com/watch?time_continue=3&v=esgZ8vBkV0U",
-	"https://www.youtube.com/watch?v=ojHe2L-CHAE",
-	"https://www.youtube.com/watch?v=bf6ag0_zoY0"
-]
-
 /**
  * The main class of this app. All the logic goes here.
  */
@@ -69,37 +63,26 @@ export default class YouTubePlayerApp {
 	private _mediaPlayerRoot: MRE.Actor = null;
 	private _mediaPlayer: MediaPlayer = null;
 
-	private _loopMediaSet = false;
-	private _media: StreamingMedia[] = [];
-	private _currentMediaIdx: number = null;
-
 	private _userManager: UserManager = null;
+	private _mediaManager: MediaManager = null;
 	private _mediaSetupOverlay: MediaSetupOverlay = null;
 
 	public get assets() { return this._assets; }
 	public get context() { return this._context; }
 	public get baseUrl() { return this._baseUrl; }
 	public get userManager() { return this._userManager; }
+	public get mediaManager() { return this._mediaManager; }
 
 	constructor(private _context: MRE.Context, private _params: MRE.ParameterSet, private _baseUrl: string) {
 		this._userManager = new UserManager(this);
+		this._mediaManager = new MediaManager(this);
 
 		this.context.onStarted(() => this.started());
 		this.context.onUserJoined(user => this._userManager.onUserJoined(user));
-		
-		if (this._params.videoUrl) {
-			this._media.push(new VideoMedia({ url: this._params.videoUrl as string }));
-		} else {
-			for(var video in videos) {
-				this._media.push(new VideoMedia({ url: videos[video] }));
-			}
-		}
 
 		if (_params.loopMediaSet && (_params.loopMediaSet as string).toLowerCase() === 'true') {
-			this._loopMediaSet = true;
+			this._mediaManager.loopMediaList = true;
 		}
-		
-		this._currentMediaIdx = 0;
 
 		this._mediaSetupOverlay = new MediaSetupOverlay(this);
 	}
@@ -170,19 +153,12 @@ export default class YouTubePlayerApp {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Prev', _ => {
-				if (this._loopMediaSet) {
-					this._currentMediaIdx = (--this._currentMediaIdx < 0) ? this._media.length - 1 : this._currentMediaIdx;
-				} else {
-					if (--this._currentMediaIdx < 0) {
-						// There is no previous video so don't to do anything.
-						this._currentMediaIdx = 0;
-						return;
-					}
-				}
-				
-				this._mediaPlayer.stop();
-				if (this._currentMediaIdx < this._media.length && this._currentMediaIdx >= 0) {
-					this._mediaPlayer.start(this._media[this._currentMediaIdx]);
+				const next = this._mediaManager.perviousMedia();
+				if (next) {
+					// We only do something with the previous button in the case that we have previous media
+					// to play, or if the media list has looped around in the media manager.
+					this._mediaPlayer.stop();
+					this._mediaPlayer.start(next);
 				}
 			})
 		});
@@ -195,19 +171,9 @@ export default class YouTubePlayerApp {
 			contents: this.createButton('Play', _ => {
 				switch (this._mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
-						// Early out in the case that we have no media to play.
-						if (this._media.length === 0) {
-							return;
-						}
-
-						// We have skipped to before or after the last video.  Play will reset to the beginning media.
-						if (this._currentMediaIdx < 0 || this._currentMediaIdx >= this._media.length) {
-							this._currentMediaIdx = 0;
-						}
-
-						const currentMedia = this._media[this._currentMediaIdx];
-						if (currentMedia) {
-							this._mediaPlayer.start(currentMedia);
+						const current = this._mediaManager.currentMedia();
+						if (current) {
+							this._mediaPlayer.start(current);
 						}
 						break;
 					case PlaybackState.Playing:
@@ -260,18 +226,9 @@ export default class YouTubePlayerApp {
 			contents: this.createButton('Next', _ => {
 				this._mediaPlayer.stop();
 
-				if (this._loopMediaSet) {
-					this._currentMediaIdx = ++this._currentMediaIdx % this._media.length;
-				} else {
-					if (this._currentMediaIdx == this._media.length) {
-						// We are already one past the end of the media set.  Do nothing.
-						return;
-					}
-					++this._currentMediaIdx;
-				}
-				
-				if (this._currentMediaIdx < this._media.length && this._currentMediaIdx >= 0) {
-					this._mediaPlayer.start(this._media[this._currentMediaIdx]);
+				const next = this._mediaManager.nextMedia();
+				if (next) {
+					this._mediaPlayer.start(next);
 				}
 			})
 		});

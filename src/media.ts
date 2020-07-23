@@ -3,56 +3,33 @@
  * Licensed under the MIT License.
  */
 
+import { ImageConfig, VideoConfig } from "./mediaConfig";
+
 export enum MediaType {
     Video = 'video',
     Image = 'image'
 }
 
-export interface StreamingMediaLike {
-    type: MediaType;
-    url: string;
-    skipAfter: number;
-}
-
-export interface ImageMediaLike extends StreamingMediaLike {
-
-}
-
-export interface VideoMediaLike extends StreamingMediaLike {
-    volume: number;
-	startTime: number;
-	loop: boolean;
-}
-
-export abstract class StreamingMedia implements StreamingMediaLike {
-    protected _url = "";
-    protected _skipAfter = 0;
-
+export abstract class StreamingMedia /*implements StreamingMediaLike*/ {
     public abstract get type(): MediaType;
     
     public get url() { return this._url; }
     public get skipAfter() { return this._skipAfter; }
 
-    public constructor(url: string) {
-        this._url = url;
+    public constructor(private _url: string, private _skipAfter: number = null) {
+
     }
 }
 
-export class ImageMedia extends StreamingMedia implements ImageMediaLike {
+export class ImageMedia extends StreamingMedia /*implements ImageMediaLike*/ {
     public get type() { return MediaType.Image; }
 
-    public constructor(init: Partial<ImageMediaLike>) {
-        super(init?.url);
-        this.init(init);
-    }
-
-    private init(from: Partial<ImageMediaLike>) {
-        if (!from) { return this; }
-        if (from.skipAfter) { this._skipAfter = from.skipAfter; }
+    public constructor(config: Partial<ImageConfig>) {
+        super(config?.imageUrl, config?.skipAfter);
     }
 }
 
-export class VideoMedia extends StreamingMedia implements VideoMediaLike {
+export class VideoMedia extends StreamingMedia /*implements VideoMediaLike*/ {
     private _volume = .5;
     private _startTime = 0;
     private _loop = false;
@@ -63,17 +40,15 @@ export class VideoMedia extends StreamingMedia implements VideoMediaLike {
     public get startTime() { return this._startTime; }
     public get loop() { return this._loop; }
 
-    public constructor(init: Partial<VideoMediaLike>) {
-        super(init?.url);
-        this.init(init);
+    public constructor(config: Partial<VideoConfig>) {
+        super(config?.videoUrl, config?.skipAfter);
+        this.init(config);
     }
 
-    private init(from: Partial<VideoMediaLike>): this {
-        if (!from) { return this; }
-        if (from.url) { this._url = from.url; }
-        if (from.skipAfter) { this._skipAfter = from.skipAfter; }
-        if (from.volume) { this._volume = from.volume; }
-        if (from.startTime) { this._startTime = from.startTime; }
-        if (from.loop) { this._loop = from.loop; }
+    private init(config: Partial<VideoConfig>): this {
+        if (!config) { return this; }
+        if (config.volume) { this._volume = config.volume; }
+        if (config.startTime) { this._startTime = config.startTime; }
+        if (config.loop) { this._loop = config.loop; }
     }
 }

@@ -4,7 +4,7 @@
  */
 
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import { MediaType, ImageMediaLike, VideoMediaLike, StreamingMediaLike } from './media';
+import { MediaType, ImageMedia, VideoMedia, StreamingMedia } from './media';
 
 export enum PlaybackState {
 	Stopped = 'stopped',
@@ -17,7 +17,7 @@ export class MediaPlayer {
     private _videoStreamCache: { [url: string]: MRE.VideoStream } = {};
     // private imageCache: { [name: string]: Image} = {};
 
-    private _currentMedia: StreamingMediaLike = null;
+    private _currentMedia: StreamingMedia = null;
     private _playbackState = PlaybackState.Stopped;
     
     private imageHost: any;
@@ -31,12 +31,12 @@ export class MediaPlayer {
 
     // public start(mediaType: MediaType.Image, media: ImageMediaLike): void;
     // public start(mediaType: MediaType.Video, media: VideoMediaLike): void;
-    public start(media: ImageMediaLike | VideoMediaLike): void {
+    public start(media: ImageMedia | VideoMedia): void {
         // Clear out the video and image hosts.
         delete this._videoPlayerInstance;
 
         if (media.type === MediaType.Video) {
-            this.startVideo(media as VideoMediaLike);
+            this.startVideo(media as VideoMedia);
         }
 
         this._playbackState = PlaybackState.Playing;
@@ -68,7 +68,7 @@ export class MediaPlayer {
 
     //=======================================================================================================================
     // Helper Functions
-    private startVideo(video: VideoMediaLike) {
+    private startVideo(video: VideoMedia) {
         this._videoStreamCache[video.url] = this._videoStreamCache[video.url] 
             ?? this.assets.createVideoStream(`${video.url}`, {
                 uri: video.url
