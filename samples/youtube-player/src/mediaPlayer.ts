@@ -4,7 +4,7 @@
  */
 
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import { MediaType, ImageMedia, VideoMedia, StreamingMedia } from './media';
+import { MediaType, ImageMedia, VideoMedia, StreamingMedia, StreamingMediaLike } from './media';
 import MediaManager from './mediaManager';
 
 export enum PlaybackState {
@@ -15,10 +15,10 @@ export enum PlaybackState {
 
 export class MediaPlayer {
     private _videoPlayerInstance: MRE.MediaInstance = null;
-    private _videoStreamCache: { [url: string]: MRE.VideoStream } = {};
+    // private _videoStreamCache: { [url: string]: MRE.VideoStream } = {};
     // private imageCache: { [name: string]: Image} = {};
 
-    private _currentMedia: StreamingMedia = null;
+    private _currentMedia: StreamingMediaLike = null;
     private _playbackState = PlaybackState.Stopped;
 
     private _skipTimeout: NodeJS.Timeout = null;
@@ -105,12 +105,12 @@ export class MediaPlayer {
     }
 
     private startVideo(video: VideoMedia) {
-        this._videoStreamCache[video.url] = this._videoStreamCache[video.url] 
-            ?? this.assets.createVideoStream(`${video.url}`, {
-                uri: video.url
-            });
+        //this._videoStreamCache[video.url] = this._videoStreamCache[video.url] 
+        //    ?? this.assets.createVideoStream(`${video.url}`, {
+        //        uri: video.url
+        //    });
 
-        this._videoPlayerInstance = new MRE.MediaInstance(this.rootActor, this._videoStreamCache[video.url].id);
+        this._videoPlayerInstance = new MRE.MediaInstance(this.rootActor, this._currentMedia.asset.id);
         this._videoPlayerInstance.start({
             volume: video.volume,
             time: video.startTime,
