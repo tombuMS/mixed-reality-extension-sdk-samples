@@ -60,7 +60,7 @@ export default class MediaManager {
     }
 
     public currentMedia(): StreamingMedia {
-        if (this._mediaList.length === 0) {
+        if (this._mediaList.length === 0 || this._currentMediaIdx < 0 && this._currentMediaIdx >= this._mediaList.length) {
             return null;
         }
 

@@ -126,7 +126,7 @@ export default class YouTubePlayerApp {
 				}
 			}
 		});
-		this._mediaPlayer = new MediaPlayer(this._mediaPlayerRoot, this.assets);
+		this._mediaPlayer = new MediaPlayer(this._mediaPlayerRoot, this.assets, this._mediaManager);
 
 		this.createButtonPanel();
 	}
@@ -153,13 +153,7 @@ export default class YouTubePlayerApp {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Prev', _ => {
-				const next = this._mediaManager.perviousMedia();
-				if (next) {
-					// We only do something with the previous button in the case that we have previous media
-					// to play, or if the media list has looped around in the media manager.
-					this._mediaPlayer.stop();
-					this._mediaPlayer.start(next);
-				}
+				this._mediaPlayer.previous();
 			})
 		});
 
@@ -171,10 +165,7 @@ export default class YouTubePlayerApp {
 			contents: this.createButton('Play', _ => {
 				switch (this._mediaPlayer.playbackState) {
 					case PlaybackState.Stopped:
-						const current = this._mediaManager.currentMedia();
-						if (current) {
-							this._mediaPlayer.start(current);
-						}
+						this._mediaPlayer.start();
 						break;
 					case PlaybackState.Playing:
 						return;
@@ -224,12 +215,7 @@ export default class YouTubePlayerApp {
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Next', _ => {
-				this._mediaPlayer.stop();
-
-				const next = this._mediaManager.nextMedia();
-				if (next) {
-					this._mediaPlayer.start(next);
-				}
+				this._mediaPlayer.next();
 			})
 		});
 
