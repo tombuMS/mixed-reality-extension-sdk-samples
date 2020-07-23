@@ -6,8 +6,6 @@ import { User } from '@microsoft/mixed-reality-extension-sdk';
 
 
 export default class MediaSetupOverlay {
-
-
     public constructor(private _app: App) {
 
     }
@@ -25,7 +23,7 @@ export default class MediaSetupOverlay {
                 appearance: {
                     materialId: this._app.assets.createMaterial('promp-bg-mat', {
                         mainTextureId: this._app.assets.createTexture('prompt-bg-tex', {
-                            uri: `${this._app.baseUrl}/promptBox.png`
+                            uri: `${this._app.baseUrl}/ownerPrompt/promptOverlay.png`
                         }).id,
                         alphaMode: MRE.AlphaMode.Mask
                     }).id,
@@ -74,7 +72,7 @@ export default class MediaSetupOverlay {
                 appearance: {
                     materialId: this._app.assets.createMaterial('prompt-yes-btn-mat', {
                         mainTextureId: this._app.assets.createTexture('prompt-yes-btn-mat', {
-                            uri: `${this._app.baseUrl}/greenBtn.png`
+                            uri: `${this._app.baseUrl}/ownerPrompt/greenBtn.png`
                         }).id,
                         alphaMode: MRE.AlphaMode.Mask
                     }).id
@@ -107,7 +105,7 @@ export default class MediaSetupOverlay {
         });
         yesBtn.setBehavior(MRE.ButtonBehavior).onClick(user => {
             this._app.userManager.setMediaPlayerOwner(user);
-            this.showMediaJsonInputOverlay();
+            this.showMediaJsonInputOverlay(user);
             overlay.destroy();
         });
 
@@ -123,7 +121,7 @@ export default class MediaSetupOverlay {
                 appearance: {
                     materialId: this._app.assets.createMaterial('prompt-no-btn-mat', {
                         mainTextureId: this._app.assets.createTexture('prompt-no-btn-mat', {
-                            uri: `${this._app.baseUrl}/redBtn.png`
+                            uri: `${this._app.baseUrl}/ownerPrompt/redBtn.png`
                         }).id,
                         alphaMode: MRE.AlphaMode.Mask
                     }).id
@@ -164,7 +162,48 @@ export default class MediaSetupOverlay {
         })
     }
 
-    public showMediaJsonInputOverlay() {
-        this._app.startMediaPlayer();
+    public showMediaJsonInputOverlay(owner: MRE.User) {
+        //const overlay = MRE.Actor.CreatePrimitive(this._app.assets, {
+        //    definition: {
+        //        shape: MRE.PrimitiveShape.Plane,
+        //        dimensions: { x: 1, y: 1, z: 0.65 }
+        //    },
+        //    actor: {
+        //        
+        //    }
+        //})
+
+        // Setup panel with Configure button and Start button when configuration is successful.
+
+        this.promptConfigureMediaPlayer(owner);
+    }
+
+    private promptConfigureMediaPlayer(owner: MRE.User) {
+        owner.prompt('Please input json string for media player configuration', true)
+        .then(res => {
+            if (res.submitted && res.text !== undefined && res.text !== null) {
+                console.log(`Video config JSON: ${res.text}`);
+                try {
+                    const mediaConfig = JSON.parse(res.text);
+                    console.log(`Parsed JSON data: ${mediaConfig}`);
+                    if (!this._app.mediaManager.setMediaConfigJson(mediaConfig)) {
+                        console.log("Failed to validate and load media config JSON");
+                        owner.prompt("Failed to validate and parse media config JSON");
+                    } else {
+                        this._app.startMediaPlayer();
+                    }
+                } catch {
+                    console.log("Failed to parse the JSON data");
+                    owner.prompt("Failed to parse JSON data.");
+                }
+            } else {
+                owner.prompt("Input valid JSON string to configure media player.");
+            }
+        });
+    }
+
+    private configureMediaPlayer(jsonData: any) {
+
+        
     }
 }

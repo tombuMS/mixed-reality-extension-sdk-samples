@@ -1,0 +1,32 @@
+{
+    "loopMediaList": false,
+    "mediaList": [
+        {
+            "videoUrl": "https://www.youtube.com/watch?v=SIH2eLsb44k",
+            "volume": 1.0,
+            "startTime": 20,
+            "loop": false
+        },
+        {
+            "videoUrl": "https://www.youtube.com/watch?v=ojHe2L-CHAE",
+            "skipAfter": 0,
+            "volume": 0.5,
+            "startTime": 0,
+            "loop": false
+        },
+        {
+            "videoUrl": "https://www.youtube.com/watch?v=bf6ag0_zoY0",
+            "skipAfter": 0,
+            "volume": 0.5,
+            "startTime": 0,
+            "loop": false
+        },
+        {
+            "videoUrl": "https://www.youtube.com/watch?time_continue=3&v=esgZ8vBkV0U",
+            "skipAfter": 0,
+            "volume": 0.5,
+            "startTime": 0,
+            "loop": false
+        }
+    ]
+}
