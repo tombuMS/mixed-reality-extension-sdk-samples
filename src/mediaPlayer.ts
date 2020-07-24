@@ -6,6 +6,7 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import { MediaType, ImageMedia, VideoMedia, StreamingMedia, StreamingMediaLike } from './media';
 import MediaManager from './mediaManager';
+import Constants from './constants';
 
 export enum PlaybackState {
 	Stopped = 'stopped',
@@ -35,24 +36,29 @@ export class MediaPlayer {
             //color: MRE.Color3.Gray()
         });
 
-        // this._imageHost = MRE.Actor.CreatePrimitive(assets, {
-        //     definition: {
-        //         shape: MRE.PrimitiveShape.Plane,
-        //         dimensions: { x: 1, y: 0, z: 1 }
-        //     },
-        //     actor: {
-        //         name: "media-player-bg",
-        //         parentId: rootActor.id,
-        //         appearance: {
-        //             materialId: this._imageHostMat.id
-        //         },
-        //         transform: {
-        //             local: {
-        //                 rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
-        //             }
-        //         }
-        //     }
-        // });
+        if (Constants.DEBUG) {
+            MRE.Actor.CreatePrimitive(assets, {
+                definition: {
+                    shape: MRE.PrimitiveShape.Plane,
+                    dimensions: { x: 1, y: 0, z: 9 / 16 }
+                },
+                actor: {
+                    name: "media-player-debug-bg",
+                    parentId: rootActor.id,
+                    appearance: {
+                        materialId: assets.createMaterial("debug-bg-mat", {
+                            color: MRE.Color3.Gray()
+                        }).id
+                    },
+                    transform: {
+                        local: {
+                            position: { x: 0, y: 0, z: 0.001 },
+                            rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
+                        }
+                    }
+                }
+            });
+        }
     }
 
     public start(): void {
@@ -151,13 +157,20 @@ export class MediaPlayer {
 
         // Calculate the bounds we need to clamp in one direction or the other to 1 x 1 max size.
         const fixedAspectRation = 16 / 9;
+        const imgAspectRation = imgResolution.x / imgResolution.y;
+
+        // Initialize as normalized height of 16:9 window.
         let width = 1; 
-        let height = 1; // Needs to be based on a height of a 16:9 video
-        if (imgResolution.x > imgResolution.y) {
-            height = height * (imgResolution.y / imgResolution.x);
-        } else if (imgResolution.x < imgResolution.y) {
-            width = width * (imgResolution.x / imgResolution.y);
-        }
+        let height = 9 / 16; // Needs to be based on a height of a 16:9 video
+
+        
+        if (imgAspectRation < fixedAspectRation) {
+            // Narrower than 16:9
+            width = imgResolution.x / (imgResolution.y * fixedAspectRation);
+        } else if (imgAspectRation > fixedAspectRation) {
+            // Wider than 16:9
+            height = imgResolution.y / imgResolution.x
+        } // else we are the same ratio so leave initial 16:9 normalized height and width
 
         // Update the image host material with the image texture.
         this._imageHostMat.color = null;
@@ -173,7 +186,7 @@ export class MediaPlayer {
                 name: "img-host",
                 parentId: this.rootActor.id,
                 appearance: {
-                    materialId: this._imageHostMat.id
+                    materialId: this._imageHostMat.id,
                 },
                 transform: {
                     local: {
