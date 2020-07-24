@@ -178,7 +178,7 @@ export default class MediaSetupOverlay {
         this.promptConfigureMediaPlayer(owner);
     }
 
-    private promptConfigureMediaPlayer(owner: MRE.User) {
+    private async promptConfigureMediaPlayer(owner: MRE.User): Promise<void> {
         owner.prompt('Please input json string for media player configuration', true)
         .then(res => {
             if (res.submitted && res.text !== undefined && res.text !== null) {
@@ -186,12 +186,15 @@ export default class MediaSetupOverlay {
                 try {
                     const mediaConfig = JSON.parse(res.text);
                     console.log(`Parsed JSON data: ${mediaConfig}`);
-                    if (!this._app.mediaManager.setMediaConfigJson(mediaConfig)) {
-                        console.log("Failed to validate and load media config JSON");
-                        owner.prompt("Failed to validate and parse media config JSON");
-                    } else {
-                        this._app.startMediaPlayer();
-                    }
+                    this._app.mediaManager.setMediaConfigJson(mediaConfig).then(success => {
+                        if (!success) {
+                            console.log("Failed to validate and load media config JSON");
+                            owner.prompt("Failed to validate and parse media config JSON");
+                        } else {
+                            console.log("Media configuration complete.  Starting the media player...")
+                            this._app.startMediaPlayer();
+                        }
+                    });
                 } catch {
                     console.log("Failed to parse the JSON data");
                     owner.prompt("Failed to parse JSON data.");

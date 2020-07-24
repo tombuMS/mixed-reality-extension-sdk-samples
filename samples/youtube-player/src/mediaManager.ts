@@ -6,12 +6,12 @@
 import App from './app';
 import mediaConfigSchema from './mediaConfigSchema.json';
 import { validate } from 'jsonschema';
-import { StreamingMedia, VideoMedia, ImageMedia } from './media';
+import { VideoMedia, ImageMedia, StreamingMediaLike } from './media';
 import { VideoConfig, ImageConfig } from './mediaConfig';
 
 export default class MediaManager {
     private _loopMediaList = false;    
-    private _mediaList: StreamingMedia[] = null;
+    private _mediaList: StreamingMediaLike[] = null;
     private _currentMediaIdx: number = null;
 
     public get loopMediaList() { return this._loopMediaList; }
@@ -28,7 +28,7 @@ export default class MediaManager {
         return result.valid;
     }
 
-    public setMediaConfigJson(jsonData: any): boolean {
+    public async setMediaConfigJson(jsonData: any): Promise<boolean> {
         this._mediaList = null;
 
         if (!this.validateConfigJson(jsonData)) {
@@ -38,18 +38,25 @@ export default class MediaManager {
 
         if (jsonData.loopMediaList) { this._loopMediaList = jsonData.loopMediaList; }
         if (jsonData.mediaList) { 
+            const assetsLoading: Promise<void>[] = [];
             this._mediaList = [];
             const mediaList = jsonData.mediaList;
             for(var media in mediaList) {
+                let newMedia: StreamingMediaLike = null;
                 if (mediaList[media].videoUrl) {
-                    this._mediaList.push(new VideoMedia(mediaList[media] as VideoConfig));
+                    newMedia = new VideoMedia(mediaList[media] as VideoConfig);
                 } else if(mediaList[media].imageUrl) {
-                    this._mediaList.push(new ImageMedia(mediaList[media] as ImageConfig));
+                    newMedia = new ImageMedia(mediaList[media] as ImageConfig);
                 } else {
                     console.log("Invalid media type in the json media list.");
                     return false;
                 }
+
+                assetsLoading.push(newMedia.preloadAssets(this._app.assets));
+                this._mediaList.push(newMedia);
             }
+
+            await Promise.all(assetsLoading);
 
             // Only set the current index to 
             if (this._mediaList.length > 0) { this._currentMediaIdx = 0; }
@@ -59,7 +66,7 @@ export default class MediaManager {
         return false;
     }
 
-    public currentMedia(): StreamingMedia {
+    public currentMedia(): StreamingMediaLike {
         if (this._mediaList.length === 0 || this._currentMediaIdx < 0 && this._currentMediaIdx >= this._mediaList.length) {
             return null;
         }
@@ -67,7 +74,7 @@ export default class MediaManager {
         return this._mediaList[this._currentMediaIdx];
     }
 
-    public perviousMedia(): StreamingMedia {
+    public perviousMedia(): StreamingMediaLike {
         if (this._mediaList.length === 0) {
             return null;
         }
@@ -89,7 +96,7 @@ export default class MediaManager {
         return null;
     }
 
-    public nextMedia(): StreamingMedia {
+    public nextMedia(): StreamingMediaLike {
         if (this._mediaList.length === 0) {
             return null;
         }

@@ -176,28 +176,29 @@ export default class YouTubePlayerApp {
 			})
 		});
 
-		grid.addCell({
-			row: 0,
-			column: 2,
-			width: spacing,
-			height: spacing,
-			contents: this.createButton('Pause', _ => {
-				switch (this._mediaPlayer.playbackState) {
-					case PlaybackState.Stopped:
-						return;
-					case PlaybackState.Playing:
-						this._mediaPlayer.pause();
-						break;
-					case PlaybackState.Paused:
-						this._mediaPlayer.resume();
-						break;
-				}
-			})
-		});
+		// TODO: Re-enable once pause is fixed and update the other button columns.
+		// grid.addCell({
+		// 	row: 0,
+		// 	column: 2,
+		// 	width: spacing,
+		// 	height: spacing,
+		// 	contents: this.createButton('Pause', _ => {
+		// 		switch (this._mediaPlayer.playbackState) {
+		// 			case PlaybackState.Stopped:
+		// 				return;
+		// 			case PlaybackState.Playing:
+		// 				this._mediaPlayer.pause();
+		// 				break;
+		// 			case PlaybackState.Paused:
+		// 				this._mediaPlayer.resume();
+		// 				break;
+		// 		}
+		// 	})
+		// });
 
 		grid.addCell({
 			row: 0,
-			column: 3,
+			column: 2,
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Stop', _ => {
@@ -211,7 +212,7 @@ export default class YouTubePlayerApp {
 
 		grid.addCell({
 			row: 0,
-			column: 4,
+			column: 3,
 			width: spacing,
 			height: spacing,
 			contents: this.createButton('Next', _ => {
