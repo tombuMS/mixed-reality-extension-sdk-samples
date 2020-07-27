@@ -74,11 +74,13 @@ export default class YouTubePlayerApp {
 	public get mediaManager() { return this._mediaManager; }
 
 	constructor(private _context: MRE.Context, private _params: MRE.ParameterSet, private _baseUrl: string) {
+		this._assets = new MRE.AssetContainer(this.context);
 		this._userManager = new UserManager(this);
 		this._mediaManager = new MediaManager(this);
 
 		this.context.onStarted(() => this.started());
 		this.context.onUserJoined(user => this._userManager.onUserJoined(user));
+		this.context.onUserLeft(user => this._userManager.onUserLeft(user));
 
 		if (_params.loopMediaSet && (_params.loopMediaSet as string).toLowerCase() === 'true') {
 			this._mediaManager.loopMediaList = true;
@@ -98,12 +100,16 @@ export default class YouTubePlayerApp {
 		// Load assets
 		this.loadAssets();
 
-		this._mediaSetupOverlay.showOwnerOverlay();
-		// this.startMediaPlayer();
+		// Check to see if the media manager is loading a config already for this session.  If not, we need to 
+		// show the setup dialog.
+		if (!this.mediaManager.loadingInitConfig) {
+			this._mediaSetupOverlay.showOwnerOverlay();
+		} else {
+			this.startMediaPlayer();
+		}
 	}
 
 	private loadAssets() {
-		this._assets = new MRE.AssetContainer(this.context);
 		this._buttonMesh = this.assets.createPlaneMesh('button-plane', 0.1, 0.05);
 		this._buttonMaterial = this.assets.createMaterial('button-mat', {
 			mainTextureId: this.assets.createTexture('button-tex', {

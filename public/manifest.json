@@ -1,0 +1,8 @@
+{
+	"name": "MRE Slide Player",
+	"description": "An MRE app for playing videos and images in a slide format.",
+	"author": "Microsoft",
+	"license": "MIT",
+	"repositoryUrl": "https://github.com/tombuMS/mixed-reality-extension-sdk-samples",
+	"requiredPermissions": ["user-interaction", "user-tracking"]
+}

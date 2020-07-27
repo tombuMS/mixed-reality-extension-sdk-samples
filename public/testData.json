@@ -1,33 +1,42 @@
 {
-    "loopMediaList": true,
+    "loopMediaList": false,
     "mediaList": [
         {
             "videoUrl": "https://www.youtube.com/watch?v=SIH2eLsb44k",
-            "skipAfter": 5,
-            "volume": 1.0,
+			"skipAfter": 10,
+            "volume": 0.2,
             "startTime": 0,
             "loop": false
+        },
+		{
+            "imageUrl": "http://www.hypergridbusiness.com/wp-content/uploads/2016/09/AltspaceVR-highrise.jpg",
+			"skipAfter": 10
         },
         {
             "videoUrl": "https://www.youtube.com/watch?v=ojHe2L-CHAE",
             "skipAfter": 10,
-            "volume": 0.5,
+            "volume": 0.2,
             "startTime": 0,
             "loop": false
         },
-        {
+		{
+            "imageUrl": "https://d1qb2nb5cznatu.cloudfront.net/startups/i/333629-6ffd7199b9bcf34d8957e8e09d974a38-medium_jpg.jpg?buster=1423092095",
+			"skipAfter": 10
+        },
+		{
+            "imageUrl": "https://pbs.twimg.com/media/CxJ-fJqUsAAFtd9.jpg",
+			"skipAfter": 10
+        },
+		{
+			"imageUrl": "https://altvr-wpengine.netdna-ssl.com/wp-content/uploads/2019/05/Educators-in-VR-Social-VR-AltspaceVR.png",
+			"skipAfter": 10
+		},
+		{
             "videoUrl": "https://www.youtube.com/watch?v=bf6ag0_zoY0",
             "skipAfter": 10,
-            "volume": 0.5,
-            "startTime": 0,
-            "loop": false
-        },
-        {
-            "videoUrl": "https://www.youtube.com/watch?time_continue=3&v=esgZ8vBkV0U",
-            "skipAfter": 10,
-            "volume": 0.5,
+            "volume": 0.2,
             "startTime": 0,
             "loop": false
         }
-    ]
+	]
 }

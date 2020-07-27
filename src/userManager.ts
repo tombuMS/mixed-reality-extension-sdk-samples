@@ -1,10 +1,11 @@
 import * as MRE from "@microsoft/mixed-reality-extension-sdk";
 import App from './app';
+import { User } from "@microsoft/mixed-reality-extension-sdk";
 
 export default class UserManager {
     private _users: MRE.User[] = [];
     private _moderators: MRE.User[] = [];
-    private _mediaPlayerOwner: MRE.User;
+    private _mediaPlayerOwnerId: MRE.Guid;
     private _moderatorGroupMask: MRE.GroupMask;
     private _ownerGroupMask: MRE.GroupMask;
 
@@ -21,22 +22,41 @@ export default class UserManager {
     
     public onUserJoined(user: MRE.User) {
         user.groups.clear();
-
         this._users.push(user);
 
         if (UserManager.isModerator(user)) {
             this._moderators.push(user);
             user.groups.add(UserManager.MODERATOR_MASK);
         }
+
+        // Check to see if the user is already the owner of this media player.  If so, re-assign the role.
+        if (user.id === this._mediaPlayerOwnerId) {
+            user.groups.add(UserManager.OWNER_MASK);
+        }
     }
 
-    public setMediaPlayerOwner(user: MRE.User) {
-        if (UserManager.isModerator(user)) {
-            this._mediaPlayerOwner = user;
-            user.groups.add(UserManager.OWNER_MASK);
-        } else {
-            console.log(" Non moderator user trying to own the poll.");
+    public onUserLeft(user: MRE.User) {
+        user.groups.clear();
+        this._users = this._users.filter(u => u.id !== user.id);
+    }
+
+    public setMediaPlayerOwner(ownerUserId: MRE.Guid) {
+        this._mediaPlayerOwnerId = ownerUserId;
+
+        const owner = this._users.find(u => u.id === ownerUserId);
+        if (owner) {
+            owner.groups.add(UserManager.OWNER_MASK);
         }
+    }
+
+    public clearMediaPlayerOwner() {
+        const mediaPlayerOwner = this._users.find(u => u.id === this._mediaPlayerOwnerId);
+
+        if (mediaPlayerOwner) {
+            mediaPlayerOwner.groups.delete(UserManager.OWNER_MASK);
+        }
+        
+        this._mediaPlayerOwnerId = null;
     }
 
     public static isModerator(user: MRE.User): boolean {
