@@ -104,9 +104,16 @@ export default class MediaSetupOverlay {
             }
         });
         yesBtn.setBehavior(MRE.ButtonBehavior).onClick(user => {
-            this._app.userManager.setMediaPlayerOwner(user);
-            this.showMediaJsonInputOverlay(user);
-            overlay.destroy();
+            this._app.userManager.setMediaPlayerOwner(user.id);
+            this._app.mediaManager.loadMediaConfig(user).then(loaded => {
+                if (loaded) {
+                    this._app.startMediaPlayer();
+                } else {
+                    this.showMediaJsonInputOverlay(user);
+                }
+
+                overlay.destroy();
+            });
         });
 
         // No button
@@ -181,12 +188,16 @@ export default class MediaSetupOverlay {
     private async promptConfigureMediaPlayer(owner: MRE.User): Promise<void> {
         owner.prompt('Please input json string for media player configuration', true)
         .then(res => {
-            if (res.submitted && res.text !== undefined && res.text !== null) {
+            if (!res.submitted) {
+                // Need to reload to owner prompt.
+                this.showOwnerOverlay();
+                return;
+            }
+                
+            if (res.text !== undefined && res.text !== null) {
                 console.log(`Video config JSON: ${res.text}`);
                 try {
-                    const mediaConfig = JSON.parse(res.text);
-                    console.log(`Parsed JSON data: ${mediaConfig}`);
-                    this._app.mediaManager.setMediaConfigJson(mediaConfig).then(success => {
+                    this._app.mediaManager.setMediaConfigJson(res.text, owner).then(success => {
                         if (!success) {
                             console.log("Failed to validate and load media config JSON");
                             owner.prompt("Failed to validate and parse media config JSON");
