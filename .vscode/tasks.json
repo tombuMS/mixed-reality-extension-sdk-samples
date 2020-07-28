@@ -28,9 +28,9 @@
       "problemMatcher": []
     },
     {
-		"label": "Build YouTube Player",
+		"label": "Build Media Player",
 		"type": "typescript",
-		"tsconfig": "samples/youtube-player/tsconfig.json",
+		"tsconfig": "samples/media-player/tsconfig.json",
 		"problemMatcher": "$tsc",
 		"group": "build"
 	},
