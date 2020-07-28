@@ -6,7 +6,8 @@
 			"skipAfter": 10,
             "volume": 0.2,
             "startTime": 0,
-            "loop": false
+            "loop": false,
+            "rolloffStartDistance": 2.0
         },
 		{
             "imageUrl": "http://www.hypergridbusiness.com/wp-content/uploads/2016/09/AltspaceVR-highrise.jpg",
@@ -17,7 +18,8 @@
             "skipAfter": 10,
             "volume": 0.2,
             "startTime": 0,
-            "loop": false
+            "loop": false,
+            "rolloffStartDistance": 0.5
         },
 		{
             "imageUrl": "https://d1qb2nb5cznatu.cloudfront.net/startups/i/333629-6ffd7199b9bcf34d8957e8e09d974a38-medium_jpg.jpg?buster=1423092095",
@@ -36,7 +38,8 @@
             "skipAfter": 10,
             "volume": 0.2,
             "startTime": 0,
-            "loop": false
+            "loop": false,
+            "rolloffStartDistance": 0.5
         }
 	]
 }

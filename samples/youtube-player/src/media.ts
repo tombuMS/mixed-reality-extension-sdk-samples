@@ -5,7 +5,6 @@
 
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import { ImageConfig, VideoConfig } from "./mediaConfig";
-import { VideoStream } from '@microsoft/mixed-reality-extension-sdk';
 
 export enum MediaType {
     Video = 'video',
@@ -37,7 +36,7 @@ export abstract class StreamingMedia<AssetT extends MRE.Asset> implements Stream
     public abstract preloadAssets(assetContainer: MRE.AssetContainer): Promise<void>;
 }
 
-export class ImageMedia extends StreamingMedia<MRE.Texture> /*implements ImageMediaLike*/ {
+export class ImageMedia extends StreamingMedia<MRE.Texture> {
     public get type() { return MediaType.Image; }
 
     public constructor(config: Partial<ImageConfig>) {
@@ -56,16 +55,18 @@ export class ImageMedia extends StreamingMedia<MRE.Texture> /*implements ImageMe
     }
 }
 
-export class VideoMedia extends StreamingMedia<MRE.VideoStream> /*implements VideoMediaLike*/ {
+export class VideoMedia extends StreamingMedia<MRE.VideoStream> {
     private _volume = .5;
     private _startTime = 0;
     private _loop = false;
+    private _rolloffStartDistance = 1.0;
 
     public get type() { return MediaType.Video; }
 
     public get volume() { return this._volume; }
     public get startTime() { return this._startTime; }
     public get loop() { return this._loop; }
+    public get rolloffStartDistance() { return this._rolloffStartDistance; }
 
     public constructor(config: Partial<VideoConfig>) {
         super(config?.videoUrl, config?.skipAfter);
@@ -85,5 +86,6 @@ export class VideoMedia extends StreamingMedia<MRE.VideoStream> /*implements Vid
         if (config.volume) { this._volume = config.volume; }
         if (config.startTime) { this._startTime = config.startTime; }
         if (config.loop) { this._loop = config.loop; }
+        if (config.rolloffStartDistance) { this._rolloffStartDistance = config.rolloffStartDistance; }
     }
 }

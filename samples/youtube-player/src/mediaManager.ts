@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
- import * as MRE from '@microsoft/mixed-reality-extension-sdk';
+import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import App from './app';
 import mediaConfigSchema from './mediaConfigSchema.json';
 import { validate } from 'jsonschema';

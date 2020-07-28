@@ -147,7 +147,8 @@ export class MediaPlayer {
         this._videoPlayerInstance.start({
             volume: video.volume,
             time: video.startTime,
-            looping: video.loop
+            looping: video.loop,
+            rolloffStartDistance: video.rolloffStartDistance
         });
     }
 

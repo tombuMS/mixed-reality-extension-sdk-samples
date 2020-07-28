@@ -14,4 +14,5 @@ export interface VideoConfig {
     volume: number;
     startTime: number;
     loop: boolean;
+    rolloffStartDistance: number;
 }
