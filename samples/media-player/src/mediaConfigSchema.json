@@ -26,7 +26,8 @@
                             "skipAfter": {"type": "number" },
                             "volume": {"type": "number" },
                             "startTime": { "type": "number"},
-                            "loop": { "type": "boolean" }
+                            "loop": { "type": "boolean" },
+                            "rolloffStartDistance": { "type": "number" }
                         },
                         "required": ["videoUrl"]
                     }

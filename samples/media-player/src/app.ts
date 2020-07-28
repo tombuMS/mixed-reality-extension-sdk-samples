@@ -4,56 +4,15 @@
  */
 
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import { VideoMedia, StreamingMedia } from './media';
 import { MediaPlayer, PlaybackState } from './mediaPlayer';
 import UserManager from './userManager';
 import MediaSetupOverlay from './mediaSetupOverlay';
 import MediaManager from './mediaManager';
 
-// export declare type SetVideoStateOptions = {
-//     /**
-//      * volume multiplier, (0.0-1.0, where 0.0=no sound, 1.0=maximum)
-//      */
-//     volume?: number;
-//     /**
-//      * repeat the video when ended, or turn it off after playing once
-//      */
-//     looping?: boolean;
-//     /**
-//      * pause or unpause the video. Default to false.
-//      */
-//     paused?: boolean;
-//     /**
-//      * Specify how much a sound is non-directional (playing the same volume in each speaker
-//      * regardless of facing direction)
-//      * vs directional (playing only in the speakers that are pointing towards the sound source).
-//      * This can be used to make sounds seem more "wide".
-//      * It is also useful for multi-channel sounds (such as music), because a fully directional sound
-//      * will always sound like mono.
-//      * Default to 0.0. For music and ambient looping sounds, set this between 0.5 and 1.0.
-//      */
-//     spread?: number;
-//     /**
-//      * Sounds will play at full volume until user is this many meters away,
-//      * and then volume will decrease logarithmically.
-//      * Default to 1.0. For sound that needs to fill up a large space (like a concert), increase this number.
-//      */
-//     rolloffStartDistance?: number;
-//     /**
-//      * The media should start at, or seek this many seconds into the media.
-//      * Time is in seconds relative to start of clip.
-//      */
-//     time?: number;
-//     /**
-//      * Should the video stream be visible or invisible
-//      */
-//     visible?: boolean;
-// };
-
 /**
- * The main class of this app. All the logic goes here.
+ * The main class of the media player app.
  */
-export default class YouTubePlayerApp {
+export default class MediaPlayerApp {
 	private _assets: MRE.AssetContainer;
 	private _buttonMesh: MRE.Mesh = null;
 	private _buttonMaterial: MRE.Material = null;
@@ -85,8 +44,6 @@ export default class YouTubePlayerApp {
 		if (_params.loopMediaSet && (_params.loopMediaSet as string).toLowerCase() === 'true') {
 			this._mediaManager.loopMediaList = true;
 		}
-
-		this._mediaSetupOverlay = new MediaSetupOverlay(this);
 	}
 
 	public startMediaPlayer() {
@@ -103,6 +60,7 @@ export default class YouTubePlayerApp {
 		// Check to see if the media manager is loading a config already for this session.  If not, we need to 
 		// show the setup dialog.
 		if (!this.mediaManager.loadingInitConfig) {
+			this._mediaSetupOverlay = this._mediaSetupOverlay ?? new MediaSetupOverlay(this);
 			this._mediaSetupOverlay.showOwnerOverlay();
 		} else {
 			this.startMediaPlayer();
@@ -119,6 +77,7 @@ export default class YouTubePlayerApp {
 		})
 	}
 
+	// TODO @tombu: Refactor this in to the media player as it's own asset management and UI.
 	private showMediaPlayer() {
 		// Create the media instance
 		const appScalar = 5;
@@ -132,11 +91,13 @@ export default class YouTubePlayerApp {
 				}
 			}
 		});
-		this._mediaPlayer = new MediaPlayer(this._mediaPlayerRoot, this.assets, this._mediaManager);
+
+		this._mediaPlayer = this._mediaPlayer ?? new MediaPlayer(this._mediaPlayerRoot, this.assets, this._mediaManager);
 
 		this.createButtonPanel();
 	}
 
+	// TODO @tombu: Refactor this in to the media player as it's own asset management and UI.
 	private createButtonPanel() {
 		this._buttonPanel = MRE.Actor.Create(this.context, { 
 			actor: { 
@@ -229,34 +190,7 @@ export default class YouTubePlayerApp {
 		grid.applyLayout();
 		this._buttonPanel.created().then(() => {
 			this._buttonPanel.appearance.enabled = new MRE.GroupMask(this._context, [UserManager.OWNER_MASK]);
-		})
-
-
-		// Load a glTF model
-		//const pauseButton = MRE.Actor.CreateFromGltf(this.assets, {
-		//	// at the given URL
-		//	uri: `${this.baseUrl}/button-with-material.glb`,
-		//	// and spawn box colliders around the meshes.
-		//	colliderType: 'box',
-		//	// Also apply the following generic actor properties.
-		//	actor: {
-		//		name: 'Pause Button',
-		//		// Parent the glTF model to the text actor.
-		//		parentId: this._mediaPlayerRoot.id,
-		//		transform: {
-		//			local: {
-		//				position: { x: 0, y: 0, z: 0 },
-		//				scale: { x: 0, y: 0, z: 0 }
-		//			}
-		//		} 
-		//	}
-		//});
-
-		//this.playTexture = this.assets.createTexture('playButtonTex', {
-		//	uri: `${this.baseUrl}/media-play.png`,
-		//	wrapU: TextureWrapMode.Clamp,
-		//	wrapV: TextureWrapMode.Clamp
-		//});
+		});
 	}
 
 	private createButton(buttonLabel: string, clickHandler: (user: MRE.User) => void): MRE.Actor {
@@ -295,37 +229,4 @@ export default class YouTubePlayerApp {
 
 		return buttonContainer;
 	}
-
-
-	//=============================================================================================================================
-	// Video functions
-	// private startVideo() {
-	// 	console.log('Starting the video player.');
-	// 	this.videoPlayerInstance.start({
-	// 		volume: .5,
-	// 		rolloffStartDistance: 1.0,
-	// 		looping: false,
-	// 		visible: true
-	// 	});
-// 
-	// 	this.playbackState = PlaybackState.Playing;
-	// }
-// 
-	// private pauseVideo() {
-	// 	console.log('Pausing video player');
-	// 	this.videoPlayerInstance.pause();
-	// 	this.playbackState = PlaybackState.Paused;
-	// }
-// 
-	// private resumeVideo() {
-	// 	console.log('Resuming paused video player');
-	// 	this.videoPlayerInstance.resume();
-	// 	this.playbackState = PlaybackState.Playing;
-	// }
-// 
-	// private stopVideo() {
-	// 	console.log("Stopping video player");
-	// 	this.videoPlayerInstance.stop();
-	// 	this.playbackState = PlaybackState.Stopped;
-	// }
 }
