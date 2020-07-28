@@ -4,5 +4,5 @@
  */
 
 export default class Constants {
-    public static readonly DEBUG = false;
+	public static readonly DEBUG = false;
 }
